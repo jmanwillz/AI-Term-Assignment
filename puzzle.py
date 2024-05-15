@@ -3,16 +3,38 @@ import random
 
 class Puzzle:
     # Custom implementation of the 15 puzzle.
+    solution_state: list[int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0]
 
     def __init__(self) -> None:
         self.state = []
 
-    def set_state(self, values: list[int]):
-        if len(values) != 16:
-            raise ValueError("The state needs to be length 15.")
+    @staticmethod
+    def validate_puzzle(state: list[int]) -> bool:
+        if len(state) != 16:
+            return False
         for value in range(16):
-            if value not in values:
-                raise ValueError("The state needs to contain the numbers 1 to 15.")
+            if value not in state:
+                return False
+
+        return True
+
+    @staticmethod
+    def hamming(state: list[int]) -> int:
+        if not Puzzle.validate_puzzle(state):
+            raise ValueError("Invalid puzzle.")
+        result: int = 0
+        for index in range(16):
+            if state[index] != 0:
+                if state[index] != index + 1:
+                    result += 1
+        return result
+
+    def hamming(self) -> int:
+        return Puzzle.hamming(self.state)
+
+    def set_state(self, values: list[int]):
+        if not Puzzle.validate_puzzle(values):
+            raise ValueError("Invalid puzzle.")
         self.state = values
 
     def initialise_state(self):
