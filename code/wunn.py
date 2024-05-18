@@ -12,53 +12,6 @@ from torchvision import datasets, transforms
 from torchvision.utils import make_grid
 from tqdm import tqdm, trange
 
-writer = SummaryWriter()
-
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-LOADER_KWARGS = {'num_workers': 1, 'pin_memory': True} if torch.cuda.is_available() else {}
-
-PI = 0.5
-SIGMA_1 = torch.FloatTensor([math.exp(-0)])
-SIGMA_2 = torch.FloatTensor([math.exp(-6)])
-
-BATCH_SIZE = 100
-TEST_BATCH_SIZE = 5
-
-train_loader = torch.utils.data.DataLoader(
-    datasets.FashionMNIST(
-        "./fmnist", train=True, download=True, transform=transforms.ToTensor()
-    ),
-    batch_size=BATCH_SIZE,
-    shuffle=True,
-    **LOADER_KWARGS
-)
-test_loader = torch.utils.data.DataLoader(
-    datasets.FashionMNIST(
-        "./fmnist", train=False, download=True, transform=transforms.ToTensor()
-    ),
-    batch_size=TEST_BATCH_SIZE,
-    shuffle=False,
-    **LOADER_KWARGS
-)
-
-TRAIN_SIZE = len(train_loader.dataset)
-TEST_SIZE = len(test_loader.dataset)
-NUM_BATCHES = len(train_loader)
-NUM_TEST_BATCHES = len(test_loader)
-
-CLASSES = 10
-TRAIN_EPOCHS = 20
-SAMPLES = 2
-TEST_SAMPLES = 10
-
-assert (TRAIN_SIZE % BATCH_SIZE) == 0
-assert (TEST_SIZE % TEST_BATCH_SIZE) == 0
-
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-LOADER_KWARGS = (
-    {"num_workers": 1, "pin_memory": True} if torch.cuda.is_available() else {}
-)
-
 
 class Gaussian(object):
     def __init__(self, mu, rho):
@@ -139,6 +92,49 @@ class BayesianLinear(nn.Module):
             self.log_prior, self.log_variational_posterior = 0, 0
 
         return F.linear(input, weight, bias)
+
+
+class BayesianNetwork(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.l1 = BayesianLinear(28 * 28, 400)
+        self.l2 = BayesianLinear(400, 400)
+        self.l3 = BayesianLinear(400, 10)
+
+    def forward(self, x, sample=False):
+        x = x.view(-1, 28 * 28)
+        x = F.relu(self.l1(x, sample))
+        x = F.relu(self.l2(x, sample))
+        x = F.log_softmax(self.l3(x, sample), dim=1)
+        return x
+
+    def log_prior(self):
+        return self.l1.log_prior + self.l2.log_prior + self.l3.log_prior
+
+    def log_variational_posterior(self):
+        return (
+            self.l1.log_variational_posterior
+            + self.l2.log_variational_posterior
+            + self.l3.log_variational_posterior
+        )
+
+    def sample_elbo(self, input, target, samples=SAMPLES):
+        outputs = torch.zeros(samples, BATCH_SIZE, CLASSES).to(DEVICE)
+        log_priors = torch.zeros(samples).to(DEVICE)
+        log_variational_posteriors = torch.zeros(samples).to(DEVICE)
+        for i in range(samples):
+            outputs[i] = self(input, sample=True)
+            log_priors[i] = self.log_prior()
+            log_variational_posteriors[i] = self.log_variational_posterior()
+        log_prior = log_priors.mean()
+        log_variational_posterior = log_variational_posteriors.mean()
+        negative_log_likelihood = F.nll_loss(
+            outputs.mean(0), target, size_average=False
+        )
+        loss = (
+            log_variational_posterior - log_prior
+        ) / NUM_BATCHES + negative_log_likelihood
+        return loss, log_prior, log_variational_posterior, negative_log_likelihood
 
 
 def write_weight_histograms(epoch):
@@ -232,50 +228,55 @@ def test_ensemble():
     print("Ensemble Accuracy: {}/{}".format(correct, TEST_SIZE))
 
 
-class BayesianNetwork(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.l1 = BayesianLinear(28 * 28, 400)
-        self.l2 = BayesianLinear(400, 400)
-        self.l3 = BayesianLinear(400, 10)
-
-    def forward(self, x, sample=False):
-        x = x.view(-1, 28 * 28)
-        x = F.relu(self.l1(x, sample))
-        x = F.relu(self.l2(x, sample))
-        x = F.log_softmax(self.l3(x, sample), dim=1)
-        return x
-
-    def log_prior(self):
-        return self.l1.log_prior + self.l2.log_prior + self.l3.log_prior
-
-    def log_variational_posterior(self):
-        return (
-            self.l1.log_variational_posterior
-            + self.l2.log_variational_posterior
-            + self.l3.log_variational_posterior
-        )
-
-    def sample_elbo(self, input, target, samples=SAMPLES):
-        outputs = torch.zeros(samples, BATCH_SIZE, CLASSES).to(DEVICE)
-        log_priors = torch.zeros(samples).to(DEVICE)
-        log_variational_posteriors = torch.zeros(samples).to(DEVICE)
-        for i in range(samples):
-            outputs[i] = self(input, sample=True)
-            log_priors[i] = self.log_prior()
-            log_variational_posteriors[i] = self.log_variational_posterior()
-        log_prior = log_priors.mean()
-        log_variational_posterior = log_variational_posteriors.mean()
-        negative_log_likelihood = F.nll_loss(
-            outputs.mean(0), target, size_average=False
-        )
-        loss = (
-            log_variational_posterior - log_prior
-        ) / NUM_BATCHES + negative_log_likelihood
-        return loss, log_prior, log_variational_posterior, negative_log_likelihood
-
-
 if __name__ == "__main__":
+    writer = SummaryWriter()
+    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    LOADER_KWARGS = (
+        {"num_workers": 1, "pin_memory": True} if torch.cuda.is_available() else {}
+    )
+
+    PI = 0.5
+    SIGMA_1 = torch.FloatTensor([math.exp(-0)])
+    SIGMA_2 = torch.FloatTensor([math.exp(-6)])
+
+    BATCH_SIZE = 100
+    TEST_BATCH_SIZE = 5
+
+    train_loader = torch.utils.data.DataLoader(
+        datasets.FashionMNIST(
+            "./fmnist", train=True, download=True, transform=transforms.ToTensor()
+        ),
+        batch_size=BATCH_SIZE,
+        shuffle=True,
+        **LOADER_KWARGS
+    )
+    test_loader = torch.utils.data.DataLoader(
+        datasets.FashionMNIST(
+            "./fmnist", train=False, download=True, transform=transforms.ToTensor()
+        ),
+        batch_size=TEST_BATCH_SIZE,
+        shuffle=False,
+        **LOADER_KWARGS
+    )
+
+    TRAIN_SIZE = len(train_loader.dataset)
+    TEST_SIZE = len(test_loader.dataset)
+    NUM_BATCHES = len(train_loader)
+    NUM_TEST_BATCHES = len(test_loader)
+
+    CLASSES = 10
+    TRAIN_EPOCHS = 20
+    SAMPLES = 2
+    TEST_SAMPLES = 10
+
+    assert (TRAIN_SIZE % BATCH_SIZE) == 0
+    assert (TEST_SIZE % TEST_BATCH_SIZE) == 0
+
+    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    LOADER_KWARGS = (
+        {"num_workers": 1, "pin_memory": True} if torch.cuda.is_available() else {}
+    )
+
     net = BayesianNetwork().to(DEVICE)
     optimizer = optim.Adam(net.parameters())
     for epoch in range(TRAIN_EPOCHS):
