@@ -13,6 +13,10 @@ from torchvision.utils import make_grid
 from tqdm import tqdm, trange
 
 
+def get_device():
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
 class Gaussian(object):
     def __init__(self, mu, rho):
         super().__init__()
@@ -25,7 +29,7 @@ class Gaussian(object):
         return torch.log1p(torch.exp(self.rho))
 
     def sample(self):
-        epsilon = self.normal.sample(self.rho.size()).to(DEVICE)
+        epsilon = self.normal.sample(self.rho.size()).to(get_device())
         return self.mu + self.sigma * epsilon
 
     def log_prob(self, input):
@@ -119,9 +123,9 @@ class BayesianNetwork(nn.Module):
         )
 
     def sample_elbo(self, input, target, samples=SAMPLES):
-        outputs = torch.zeros(samples, BATCH_SIZE, CLASSES).to(DEVICE)
-        log_priors = torch.zeros(samples).to(DEVICE)
-        log_variational_posteriors = torch.zeros(samples).to(DEVICE)
+        outputs = torch.zeros(samples, BATCH_SIZE, CLASSES).to(get_device())
+        log_priors = torch.zeros(samples).to(get_device())
+        log_variational_posteriors = torch.zeros(samples).to(get_device())
         for i in range(samples):
             outputs[i] = self(input, sample=True)
             log_priors[i] = self.log_prior()
@@ -184,7 +188,7 @@ def train(net, optimizer, epoch):
     if epoch == 0:  # write initial distributions
         write_weight_histograms(epoch)
     for batch_idx, (data, target) in enumerate(tqdm(train_loader)):
-        data, target = data.to(DEVICE), target.to(DEVICE)
+        data, target = data.to(get_device()), target.to(get_device())
         net.zero_grad()
         loss, log_prior, log_variational_posterior, negative_log_likelihood = (
             net.sample_elbo(data, target)
@@ -208,8 +212,8 @@ def test_ensemble():
     corrects = np.zeros(TEST_SAMPLES + 1, dtype=int)
     with torch.no_grad():
         for data, target in test_loader:
-            data, target = data.to(DEVICE), target.to(DEVICE)
-            outputs = torch.zeros(TEST_SAMPLES + 1, TEST_BATCH_SIZE, CLASSES).to(DEVICE)
+            data, target = data.to(get_device()), target.to(get_device())
+            outputs = torch.zeros(TEST_SAMPLES + 1, TEST_BATCH_SIZE, CLASSES).to(get_device())
             for i in range(TEST_SAMPLES):
                 outputs[i] = net(data, sample=True)
             outputs[TEST_SAMPLES] = net(data, sample=False)
@@ -230,7 +234,6 @@ def test_ensemble():
 
 if __name__ == "__main__":
     writer = SummaryWriter()
-    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     LOADER_KWARGS = (
         {"num_workers": 1, "pin_memory": True} if torch.cuda.is_available() else {}
     )
@@ -271,11 +274,6 @@ if __name__ == "__main__":
 
     assert (TRAIN_SIZE % BATCH_SIZE) == 0
     assert (TEST_SIZE % TEST_BATCH_SIZE) == 0
-
-    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    LOADER_KWARGS = (
-        {"num_workers": 1, "pin_memory": True} if torch.cuda.is_available() else {}
-    )
 
     net = BayesianNetwork().to(DEVICE)
     optimizer = optim.Adam(net.parameters())
