@@ -1,32 +1,12 @@
 from fifteen_puzzle_solvers.algorithms import AStar
-from fifteen_puzzle_solvers.puzzle import Puzzle
+
 from scipy.stats import norm
 
 from FFNN import FFNN
 from WUNN import WUNN
-
+from Puzzles import Puzzles
 import math
 import numpy as np
-import random
-
-
-class Puzzles:
-    def __init__(self):
-        pass
-
-    def generate_puzzle(self, num_steps) -> Puzzle:
-        start_state = Puzzle(
-            [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 0]]
-        )
-        state = start_state
-        for step in range(num_steps):
-            moves = state.get_moves()
-            move = random.choice(moves)
-            state = move
-        return state
-
-    def generate_puzzle_uncert(self, max_uncert: float, wunn: WUNN, max_steps):
-        pass
 
 
 def h(alpha, mu, sigma):
@@ -103,10 +83,11 @@ def learn_heuristic_prac(**kwargs):
             )
 
             strategy = AStar(task)
-            if strategy.start.is_solvable():
-                strategy.solve_puzzle()
-                plan = strategy.solution
-                num_solved += 1
+            if strategy.start is not None:
+                if strategy.start.is_solvable():
+                    strategy.solve_puzzle()
+                    plan = strategy.solution
+                    num_solved += 1
 
 
 if __name__ == "__main__":
