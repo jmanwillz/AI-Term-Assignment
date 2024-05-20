@@ -1,10 +1,10 @@
 from fifteen_puzzle_solvers.algorithms import AStar
-
 from scipy.stats import norm
 
 from FFNN import FFNN
-from WUNN import WUNN
 from Puzzles import Puzzles
+from WUNN import WUNN
+
 import math
 import numpy as np
 
