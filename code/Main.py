@@ -1,5 +1,3 @@
-from re import X
-from fifteen_puzzle_solvers.algorithms import AStar
 from queue import Queue
 
 from FFNN import FFNN
