@@ -29,9 +29,6 @@ class Puzzle:
                     result += 1
         return result
 
-    def hamming(self) -> int:
-        return Puzzle.hamming(self.state)
-
     def set_state(self, values: list[int]):
         if not Puzzle.validate_puzzle(values):
             raise ValueError("Invalid puzzle.")
