@@ -1,16 +1,12 @@
 from fifteen_puzzle_solvers.algorithms import AStar
-from scipy.stats import norm
+
 
 from FFNN import FFNN
-from Puzzles import Puzzles
+from PuzzleState import PuzzleState
 from WUNN import WUNN
 
 import math
 import numpy as np
-
-
-def h(alpha, mu, sigma):
-    return norm.ppf(alpha, loc=mu, scale=sigma)
 
 
 def softmax(x):
@@ -28,13 +24,14 @@ def sample_from_states(states):
     return sampled_state, sampled_value
 
 
-def generate_task_prac(**kwargs):
-    puzzle = Puzzles()
+def generate_task_prac(**kwargs) -> PuzzleState:
+    puzzle = PuzzleState()
     if kwargs["wunn"].is_trained:
-        pass
+        raise Exception()
         # return puzzle.generate_puzzle_uncert()
     else:
-        return puzzle.generate_puzzle(num_steps=1)
+        puzzle.generate_puzzle(num_steps=1)
+        return puzzle
 
     # s_prime = Puzzle([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 0]])
     # num_steps = 0
@@ -78,16 +75,23 @@ def learn_heuristic_prac(**kwargs):
     for n in range(kwargs["num_iter"]):
         num_solved = 0
         for i in range(kwargs["num_tasks_per_iter"]):
-            task = generate_task_prac(
-                wunn=wunn, max_steps=kwargs["max_steps"], epsilon=kwargs["epsilon"]
+            puzzle_state = generate_task_prac(
+                wunn=wunn,
+                epsilon=kwargs["epsilon"],
+                max_steps=kwargs["max_steps"],
+                K=kwargs["K"],
             )
 
-            strategy = AStar(task)
-            if strategy.start is not None:
-                if strategy.start.is_solvable():
-                    strategy.solve_puzzle()
-                    plan = strategy.solution
-                    num_solved += 1
+            puzzle_state.iterative_deepening_a_star_search(puzzle_state.state)
+
+            # strategy = AStar(task.state)
+            # if strategy.start is not None:
+            #     if strategy.start.is_solvable():
+            #         strategy.solve_puzzle()
+            #         plan = strategy.solution
+            #         num_solved += 1
+
+    # Trim memory_buffer
 
 
 if __name__ == "__main__":
@@ -98,4 +102,5 @@ if __name__ == "__main__":
         num_tasks_per_iter=10,
         max_steps=1000,
         epsilon=1,
+        K=100,
     )
