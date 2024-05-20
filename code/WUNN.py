@@ -22,8 +22,7 @@ class WUNN:
         self.kl_weight = 0.01
         self.optimizer = optim.Adam(self.model.parameters(), lr=0.01)
 
-    def train(self, x, y):
-        num_epochs = 3000
+    def train(self, x, y, num_epochs):
         for epoch in range(num_epochs):
             self.optimizer.zero_grad()
             outputs = self.model(x)

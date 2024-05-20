@@ -1,5 +1,6 @@
+from re import X
 from fifteen_puzzle_solvers.algorithms import AStar
-
+from queue import Queue
 
 from FFNN import FFNN
 from PuzzleState import PuzzleState
@@ -7,6 +8,7 @@ from WUNN import WUNN
 
 import math
 import numpy as np
+import torch
 
 
 def softmax(x):
@@ -66,7 +68,7 @@ def learn_heuristic_prac(**kwargs):
     wunn = WUNN(mu_0=0, sigma_0=math.sqrt(10))
     ffnn = FFNN()
 
-    memory_buffer = dict()
+    memory_buffer = Queue()
     y_q = float("-inf")
     alpha = kwargs["alpha_0"]
     beta = kwargs["beta_0"]
@@ -82,25 +84,59 @@ def learn_heuristic_prac(**kwargs):
                 K=kwargs["K"],
             )
 
-            puzzle_state.iterative_deepening_a_star_search(puzzle_state.state)
+            puzzle_state.set_params(
+                alpha=alpha, ffnn=ffnn, y_q=y_q, epsilon=kwargs["epsilon"]
+            )
 
-            # strategy = AStar(task.state)
-            # if strategy.start is not None:
-            #     if strategy.start.is_solvable():
-            #         strategy.solve_puzzle()
-            #         plan = strategy.solution
-            #         num_solved += 1
+            plan = puzzle_state.IDA_star(puzzle_state.state, t_max=kwargs["t_max"])
 
-    # Trim memory_buffer
+            if plan is not None:
+                num_solved += 1
+                for s_j in plan["solution"]:
+                    if not puzzle_state.is_goal(s_j):
+                        x_j = s_j
+                        y_j = plan["cost"]
+
+                        if memory_buffer.qsize() > kwargs["max_memory_buffer_records"]:
+                            memory_buffer.get()
+
+                        memory_buffer.put((x_j, y_j))
+
+        if num_solved < kwargs["num_tasks_per_iter_thresh"]:
+            alpha = max(0.5, alpha - kwargs["delta"])
+            update_beta = False
+        else:
+            update_beta = True
+
+        train_set = list(memory_buffer.queue)
+        x = []
+        y = []
+        for entry in train_set:
+            x.append(puzzle_state.F_not_as_tensor(entry[0]))
+            y.append(entry[1])
+
+        ffnn.train(
+            torch.tensor(x).float(), torch.tensor(y).float(), kwargs["train_iter"]
+        )
+        wunn.train(
+            torch.tensor(x).float(), torch.tensor(y).float(), kwargs["max_train_iter"]
+        )
 
 
 if __name__ == "__main__":
     learn_heuristic_prac(
-        num_iter=50,
         alpha_0=0.99,
         beta_0=0.05,
-        num_tasks_per_iter=10,
-        max_steps=1000,
+        delta=0.05,
         epsilon=1,
         K=100,
+        max_memory_buffer_records=25000,
+        max_steps=1000,
+        max_train_iter=5000,
+        num_iter=50,
+        num_tasks_per_iter=10,
+        num_tasks_per_iter_thresh=6,
+        q=0.95,
+        t_max=60,
+        train_iter=1000,
     )

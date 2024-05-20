@@ -16,8 +16,7 @@ class FFNN:
         nll = 0.5 * torch.mean(log_variance + ((targets - mean) ** 2) / variance)
         return nll
 
-    def train(self, x, y):
-        num_epochs = 3000
+    def train(self, x, y, num_epochs):
         self.model.train()
         for epoch in range(num_epochs):
             self.optimizer.zero_grad()

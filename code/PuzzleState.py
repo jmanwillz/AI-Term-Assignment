@@ -7,6 +7,8 @@ from FFNN import FFNN
 from WUNN import WUNN
 
 import random
+import time
+import torch
 
 
 class PuzzleState:
@@ -16,12 +18,14 @@ class PuzzleState:
         )
         self.ffnn: Optional[FFNN] = None
         self.alpha: Optional[Float] = None
+        self.y_q: Optional[Float] = None
+        self.epsilon: Optional[Float] = None
 
-    def set_ffnn(self, ffnn: FFNN):
-        self.ffnn = ffnn
-
-    def set_alpha(self, alpha):
-        self.alpha = alpha
+    def set_params(self, **kwargs):
+        self.ffnn = kwargs["ffnn"]
+        self.alpha = kwargs["alpha"]
+        self.y_q = kwargs["y_q"]
+        self.epsilon = kwargs["epsilon"]
 
     def generate_puzzle(self, num_steps):
         start_state = self.state
@@ -37,38 +41,72 @@ class PuzzleState:
 
     def heuristic(self, puzzle: Puzzle):
         # TODO: Add logic here
-        if self.ffnn is None or self.alpha is None:
+        if self.ffnn is None or self.alpha is None or self.y_q is None:
             raise Exception()
 
-        mean, variance = self.ffnn.test(self.F(puzzle))
-        h = self.h(self.alpha, mean, variance)
-        return max(0, h[0])
+        mean, sigma_a_squared = self.ffnn.test(self.F(puzzle))
+        mean = mean.item()
 
-    def iterative_deepening_a_star_search(self, start_puzzle: Puzzle):
-        threshold = self.heuristic(start_puzzle)
+        if mean < self.y_q:
+            sigma_t_squared = sigma_a_squared.item()
+        else:
+            sigma_t_squared = self.epsilon
+
+        h_val = self.h(self.alpha, mean, sigma_t_squared).item()
+        return max(0, h_val)
+
+    def IDA_star(self, start_puzzle: Puzzle, t_max: int):
+        start_time = time.time()
+        bound = self.heuristic(start_puzzle)
         while True:
-            result = self.search(start_puzzle, 0, threshold)
-            if isinstance(result, tuple) and result[0].is_goal():
-                return result
-            threshold = result
+            result = self.search(start_puzzle, 0, bound, [start_puzzle])
 
-    def search(self, node, g, threshold):
-        f = g + self.heuristic(node)
-        if f > threshold:
-            return f
-        if node.is_goal():
-            return node, g
-        min_threshold = float("inf")
-        for neighbor in node.get_neighbors():
-            result = self.search(neighbor, g + 1, threshold)
-            if isinstance(result, tuple) and result[0].is_goal():
+            elapsed_time = time.time() - start_time
+            if elapsed_time > t_max:
+                return None
+
+            if len(result["solution"]) > 0:
                 return result
-            elif isinstance(result, float):
-                min_threshold = min(min_threshold, result)
-        return min_threshold
+            if result["cost"] == float("inf"):
+                return None
+            bound = result["cost"]
+
+    def search(self, puzzle: Puzzle, g, bound, path):
+        if self.is_goal(puzzle):
+            return {"cost": g, "solution": path}
+
+        f = g + self.heuristic(puzzle)
+        if f > bound:
+            return {"cost": f, "solution": []}
+
+        min = float("inf")
+        for successor in puzzle.get_moves():
+            if successor in path:
+                continue
+            new_path = path + [successor]
+            result = self.search(successor, g + 1, bound, new_path)
+            if len(result["solution"]) == 0 and result["cost"] < min:
+                min = result["cost"]
+            elif len(result["solution"]) > 0:
+                return result
+        return {"cost": min, "solution": []}
 
     def h(self, alpha, mu, sigma):
         return norm.ppf(alpha, loc=mu, scale=sigma)
 
     def F(self, puzzle: Puzzle):
-        pass
+        state = []
+        for i in puzzle.position:
+            for j in i:
+                state.append(j)
+        return torch.tensor(state).float().unsqueeze(0)
+
+    def F_not_as_tensor(self, puzzle: Puzzle):
+        state = []
+        for i in puzzle.position:
+            for j in i:
+                state.append(j)
+        return state
+
+    def is_goal(self, puzzle: Puzzle):
+        return puzzle.position == puzzle.PUZZLE_END_POSITION
