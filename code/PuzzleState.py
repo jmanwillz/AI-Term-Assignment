@@ -1,11 +1,12 @@
 from typing import Optional
 from fifteen_puzzle_solvers.puzzle import Puzzle
 from scipy.stats import norm
-from sympy import Float
 
 from FFNN import FFNN
 from WUNN import WUNN
 
+import math
+import numpy as np
 import random
 import time
 import torch
@@ -17,9 +18,9 @@ class PuzzleState:
             [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 0]]
         )
         self.ffnn: Optional[FFNN] = None
-        self.alpha: Optional[Float] = None
-        self.y_q: Optional[Float] = None
-        self.epsilon: Optional[Float] = None
+        self.alpha: Optional[float] = None
+        self.y_q: Optional[float] = None
+        self.epsilon: Optional[float] = None
 
     def set_params(self, **kwargs):
         self.ffnn = kwargs["ffnn"]
@@ -36,8 +37,37 @@ class PuzzleState:
             state = move
         self.state = state
 
-    def generate_puzzle_uncert(self, max_uncert: float, wunn: WUNN, max_steps):
-        pass
+    def generate_puzzle_uncert(
+        self, wunn: WUNN, epsilon: float, max_steps: int, K: int
+    ):
+        s_prime: Puzzle = Puzzle(self.state.PUZZLE_END_POSITION)
+        num_steps = 0
+        s_double_prime = None
+
+        while num_steps < max_steps:
+            num_steps += 1
+            states = dict()
+            for s in s_prime.get_moves():
+                if s_double_prime is not None and s_double_prime == s:
+                    continue
+
+                x = self.F(s)
+                results = []
+                for sample in range(K):
+                    results.append(wunn.test(x).item())
+                variance = np.var(results)
+                states[s] = math.sqrt(variance)
+
+            key = random.choice(list(states.keys()))
+            sample = states[key]
+
+            if sample**2 >= epsilon:
+                return key
+
+            s_double_prime = s_prime
+            s_prime = s
+
+        return None
 
     def heuristic(self, puzzle: Puzzle):
         # TODO: Add logic here
@@ -110,3 +140,7 @@ class PuzzleState:
 
     def is_goal(self, puzzle: Puzzle):
         return puzzle.position == puzzle.PUZZLE_END_POSITION
+
+    def softmax(self, x):
+        e_x = np.exp(x - np.max(x))
+        return e_x / e_x.sum()

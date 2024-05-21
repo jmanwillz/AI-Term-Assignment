@@ -5,61 +5,22 @@ from PuzzleState import PuzzleState
 from WUNN import WUNN
 
 import math
-import numpy as np
 import torch
-
-
-def softmax(x):
-    e_x = np.exp(x - np.max(x))
-    return e_x / e_x.sum()
-
-
-def sample_from_states(states):
-    state_values = list(states.values())
-    state_keys = list(states.keys())
-    probabilities = softmax(np.array(state_values))
-    sampled_index = np.random.choice(len(state_keys), p=probabilities)
-    sampled_state = state_keys[sampled_index]
-    sampled_value = state_values[sampled_index]
-    return sampled_state, sampled_value
 
 
 def generate_task_prac(**kwargs) -> PuzzleState:
     puzzle = PuzzleState()
     if kwargs["wunn"].is_trained:
-        raise Exception()
-        # return puzzle.generate_puzzle_uncert()
+        puzzle.generate_puzzle_uncert(
+            wunn=kwargs["wunn"],
+            max_steps=kwargs["max_steps"],
+            epsilon=kwargs["epsilon"],
+            K=kwargs["K"],
+        )
+        return puzzle
     else:
         puzzle.generate_puzzle(num_steps=1)
         return puzzle
-
-    # s_prime = Puzzle([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 0]])
-    # num_steps = 0
-    # s_double_prime = None
-    # states = dict()
-
-    # while num_steps < kwargs["max_steps"]:
-    #     num_steps += 1
-    #     states = dict()
-    #     for s in s_prime.get_moves():
-    #         if s_double_prime is not None and s_double_prime != s:
-    #             continue
-
-    #         x = s.position
-    #         tensor_x = torch.unsqueeze(
-    #             torch.tensor(list(np.concatenate(x).flat), dtype=torch.float32), dim=0
-    #         )
-    #         sigma_e_squared = kwargs["wunn"].test(tensor_x)
-    #         print(f"Value: {sigma_e_squared}")
-    #         states[s] = math.sqrt(sigma_e_squared)
-
-    #     s, sigma_e = sample_from_states(states)
-
-    #     if sigma_e**2 >= kwargs["epsilon"]:
-    #         return s
-
-    #     s_double_prime = s_prime
-    #     s_prime = s
 
 
 def learn_heuristic_prac(**kwargs):
@@ -81,6 +42,9 @@ def learn_heuristic_prac(**kwargs):
                 max_steps=kwargs["max_steps"],
                 K=kwargs["K"],
             )
+
+            if puzzle_state is None:
+                continue
 
             puzzle_state.set_params(
                 alpha=alpha, ffnn=ffnn, y_q=y_q, epsilon=kwargs["epsilon"]
