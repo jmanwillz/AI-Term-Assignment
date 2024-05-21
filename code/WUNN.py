@@ -25,7 +25,7 @@ class WUNN:
     def train(self, x, y, num_epochs):
         for epoch in range(num_epochs):
             self.optimizer.zero_grad()
-            outputs = self.model(x)
+            outputs = self.model(x).squeeze()
 
             mse = self.mse_loss(outputs, y)
             kl_loss = self.kl_loss(self.model)

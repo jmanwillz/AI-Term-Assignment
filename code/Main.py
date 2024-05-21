@@ -43,7 +43,7 @@ def learn_heuristic_prac(**kwargs):
                 K=kwargs["K"],
             )
 
-            if puzzle_state is None:
+            if puzzle_state.is_goal():
                 continue
 
             puzzle_state.set_params(
@@ -83,6 +83,11 @@ def learn_heuristic_prac(**kwargs):
         wunn.train(
             torch.tensor(x).float(), torch.tensor(y).float(), kwargs["max_train_iter"]
         )
+
+        print()
+        print(f"Finished iteration: {n + 1}/{kwargs['num_iter']}")
+        print(f"Memory buffer size: {memory_buffer.qsize()}")
+        print()
 
 
 if __name__ == "__main__":

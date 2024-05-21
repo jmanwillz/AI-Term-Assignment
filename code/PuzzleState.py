@@ -40,15 +40,16 @@ class PuzzleState:
     def generate_puzzle_uncert(
         self, wunn: WUNN, epsilon: float, max_steps: int, K: int
     ):
+        visited_states = set()
         s_prime: Puzzle = Puzzle(self.state.PUZZLE_END_POSITION)
+        visited_states.add(s_prime)
         num_steps = 0
-        s_double_prime = None
 
         while num_steps < max_steps:
             num_steps += 1
             states = dict()
             for s in s_prime.get_moves():
-                if s_double_prime is not None and s_double_prime == s:
+                if s in visited_states:
                     continue
 
                 x = self.F(s)
@@ -57,17 +58,16 @@ class PuzzleState:
                     results.append(wunn.test(x).item())
                 variance = np.var(results)
                 states[s] = math.sqrt(variance)
+                visited_states.add(s)
 
             key = random.choice(list(states.keys()))
             sample = states[key]
 
             if sample**2 >= epsilon:
-                return key
+                self.state = key
+                return
 
-            s_double_prime = s_prime
             s_prime = s
-
-        return None
 
     def heuristic(self, puzzle: Puzzle):
         # TODO: Add logic here
@@ -138,8 +138,11 @@ class PuzzleState:
                 state.append(j)
         return state
 
-    def is_goal(self, puzzle: Puzzle):
-        return puzzle.position == puzzle.PUZZLE_END_POSITION
+    def is_goal(self, puzzle: Optional[Puzzle] = None):
+        if puzzle is not None:
+            return puzzle.position == puzzle.PUZZLE_END_POSITION
+        else:
+            return self.state.position == self.state.PUZZLE_END_POSITION
 
     def softmax(self, x):
         e_x = np.exp(x - np.max(x))
