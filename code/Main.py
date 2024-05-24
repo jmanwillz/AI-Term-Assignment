@@ -8,6 +8,7 @@ from Helper import F_as_list, generate_task_prac, get_gamma, is_goal
 from WUNN import WUNN
 
 import math
+import numpy as np
 import torch
 
 
@@ -88,6 +89,8 @@ def learn_heuristic_prac(**kwargs):
         wunn.train(
             torch.tensor(x).float(), torch.tensor(y).float(), kwargs["max_train_iter"]
         )
+
+        y_q = np.quantile(y, kwargs["q"])
 
         print()
         print(f"Finished iteration: {n + 1}/{kwargs['num_iter']}")
