@@ -20,30 +20,45 @@ import torch
 
 
 def learn_heuristic_prac(**kwargs):
-    update_beta = True
+    alpha = kwargs["alpha_0"]
     beta = kwargs["beta_0"]
+    delta = kwargs["delta"]
+    epsilon = kwargs["epsilon"]
+    K = kwargs["K"]
+    max_memory_buffer_records = kwargs["max_memory_buffer_records"]
+    max_steps = kwargs["max_steps"]
+    max_train_iter = kwargs["max_train_iter"]
+    mu_0 = kwargs["mu_0"]
+    num_iter = kwargs["num_iter"]
+    num_tasks_per_iter = kwargs["num_tasks_per_iter"]
+    num_tasks_per_iter_thresh = kwargs["num_tasks_per_iter_thresh"]
+    q = kwargs["q"]
+    sigma_0_squared = kwargs["sigma_0_squared"]
+    t_max = kwargs["t_max"]
+    train_iter = kwargs["train_iter"]
+
+    memory_buffer = Queue()
     gamma = get_gamma(beta_0=beta, beta_num_iter=0.00001, num_iter=kwargs["num_iter"])
+    update_beta = True
+    y_q = float("-inf")
+
     wunn = WUNN(
-        mu_0=kwargs["mu_0"],
-        sigma_0=math.sqrt(kwargs["sigma_0_squared"]),
+        mu_0=mu_0,
+        sigma_0=math.sqrt(sigma_0_squared),
         update_beta=update_beta,
         beta=beta,
         gamma=gamma,
     )
     ffnn = FFNN()
 
-    memory_buffer = Queue()
-    y_q = float("-inf")
-    alpha = kwargs["alpha_0"]
-
-    for n in range(kwargs["num_iter"]):
+    for n in range(num_iter):
         num_solved = 0
-        for i in range(kwargs["num_tasks_per_iter"]):
+        for _ in range(num_tasks_per_iter):
             T: Optional[Puzzle] = generate_task_prac(
                 wunn=wunn,
-                max_steps=kwargs["max_steps"],
-                K=kwargs["K"],
-                epsilon=kwargs["epsilon"],
+                max_steps=max_steps,
+                K=K,
+                epsilon=epsilon,
             )
 
             if T is None or is_goal(T):
@@ -52,10 +67,10 @@ def learn_heuristic_prac(**kwargs):
             puzzle: FifteenPuzzle = FifteenPuzzle(
                 alpha=alpha,
                 check_time=True,
-                epsilon=kwargs["epsilon"],
+                epsilon=epsilon,
                 ffnn=ffnn,
                 puzzle=T,
-                t_max=kwargs["t_max"],
+                t_max=t_max,
                 uncertain=True,
                 y_q=y_q,
             )
@@ -73,29 +88,25 @@ def learn_heuristic_prac(**kwargs):
                     y_j = cost
                     cost -= 1
 
-                    if memory_buffer.qsize() > kwargs["max_memory_buffer_records"]:
+                    if memory_buffer.qsize() > max_memory_buffer_records:
                         memory_buffer.get()
                     memory_buffer.put((x_j, y_j))
 
-        if num_solved < kwargs["num_tasks_per_iter_thresh"]:
-            alpha = max(0.5, alpha - kwargs["delta"])
+        if num_solved < num_tasks_per_iter_thresh:
+            alpha = max(0.5, alpha - delta)
             update_beta = False
         else:
             update_beta = True
 
         x, y = get_x_and_y_for_training(list(memory_buffer.queue))
 
-        ffnn.train(
-            torch.tensor(x).float(), torch.tensor(y).float(), kwargs["train_iter"]
-        )
-        wunn.train(
-            torch.tensor(x).float(), torch.tensor(y).float(), kwargs["max_train_iter"]
-        )
+        ffnn.train(torch.tensor(x).float(), torch.tensor(y).float(), train_iter)
+        wunn.train(torch.tensor(x).float(), torch.tensor(y).float(), max_train_iter)
 
-        y_q = np.quantile(y, kwargs["q"])
+        y_q = np.quantile(y, q)
 
         print()
-        print(f"Finished iteration: {n + 1}/{kwargs['num_iter']}")
+        print(f"Finished iteration: {n + 1}/{num_iter}")
         print(f"Memory buffer size: {memory_buffer.qsize()}")
         print()
 

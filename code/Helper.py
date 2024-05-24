@@ -46,8 +46,12 @@ def get_x_and_y_for_training(training_set: list):
 
 
 def get_optimal_plans(puzzles: list[Puzzle]):
+    print("Solving optimal plans...")
+    print()
+
     plans = []
-    for puzzle in puzzles:
+    for index, puzzle in enumerate(puzzles):
+        print(f"Solving puzzle {index + 1}/{len(puzzles)}")
         puzzle_solver = PuzzleSolver(AStar(puzzle))
         puzzle_solver.run()
         plan = {
@@ -56,6 +60,7 @@ def get_optimal_plans(puzzles: list[Puzzle]):
             "num_expanded_nodes": puzzle_solver._strategy.num_expanded_nodes,
         }
         plans.append(plan)
+    print()
     return plans
 
 
