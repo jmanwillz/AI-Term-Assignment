@@ -22,6 +22,7 @@ import torch
 def learn_heuristic_prac(**kwargs):
     alpha = kwargs["alpha_0"]
     beta = kwargs["beta_0"]
+    beta_num_iter = kwargs["beta_num_iter"]
     delta = kwargs["delta"]
     epsilon = kwargs["epsilon"]
     K = kwargs["K"]
@@ -38,7 +39,7 @@ def learn_heuristic_prac(**kwargs):
     train_iter = kwargs["train_iter"]
 
     memory_buffer = Queue()
-    gamma = get_gamma(beta_0=beta, beta_num_iter=0.00001, num_iter=kwargs["num_iter"])
+    gamma = get_gamma(beta_0=beta, beta_num_iter=beta_num_iter, num_iter=num_iter)
     update_beta = True
     y_q = float("-inf")
 
@@ -120,6 +121,7 @@ if __name__ == "__main__":
     wunn, ffnn = learn_heuristic_prac(
         alpha_0=0.99,
         beta_0=0.05,
+        beta_num_iter=0.00001,
         delta=0.05,
         epsilon=1,
         K=100,
