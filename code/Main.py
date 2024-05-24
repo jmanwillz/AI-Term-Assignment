@@ -5,9 +5,10 @@ from typing import Optional
 from FFNN import FFNN
 from FifteenPuzzle import FifteenPuzzle
 from Helper import (
-    F_as_list,
+    generate_puzzles,
     generate_task_prac,
     get_gamma,
+    get_optimal_plans,
     get_x_and_y_for_training,
     is_goal,
 )
@@ -102,6 +103,9 @@ def learn_heuristic_prac(**kwargs):
 
 
 if __name__ == "__main__":
+    puzzles = generate_puzzles(100)
+    optimal_plans = get_optimal_plans(puzzles)
+
     wunn, ffnn = learn_heuristic_prac(
         alpha_0=0.99,
         beta_0=0.05,

@@ -1,4 +1,6 @@
+from fifteen_puzzle_solvers.algorithms import AStar
 from fifteen_puzzle_solvers.puzzle import Puzzle
+from fifteen_puzzle_solvers.solver import PuzzleSolver
 from scipy.stats import norm
 from typing import Optional, Set
 
@@ -41,6 +43,31 @@ def get_x_and_y_for_training(training_set: list):
         x.append(F_as_list(entry[0]))
         y.append(entry[1])
     return x, y
+
+
+def get_optimal_plans(puzzles: list[Puzzle]):
+    plans = []
+    for puzzle in puzzles:
+        puzzle_solver = PuzzleSolver(AStar(puzzle))
+        puzzle_solver.run()
+        plan = {
+            "solution": puzzle_solver._strategy.solution,
+            "cost": len(puzzle_solver._strategy.solution),
+            "num_expanded_nodes": puzzle_solver._strategy.num_expanded_nodes,
+        }
+        plans.append(plan)
+    return plans
+
+
+def generate_puzzles(num_puzzles: int) -> list[Puzzle]:
+    puzzles = []
+    for _ in range(num_puzzles):
+        puzzle: Puzzle = Puzzle(
+            [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 0]]
+        )
+        puzzle.generate_random_position()
+        puzzles.append(puzzle)
+    return puzzles
 
 
 def manhattan_distance(puzzle: Puzzle) -> int:
