@@ -26,6 +26,11 @@ def F(s: Puzzle) -> torch.Tensor:
     return torch.tensor(state).float().unsqueeze(0)
 
 
+def get_gamma(beta_0: float, beta_num_iter: float, num_iter: int):
+    # y^num_iter * beta_0 = beta_num_iter
+    return math.log(beta_num_iter / beta_0) / math.log(num_iter)
+
+
 def F_as_list(puzzle: Puzzle):
     return list(np.array(puzzle.position).flatten())
 

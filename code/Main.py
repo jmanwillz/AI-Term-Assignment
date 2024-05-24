@@ -4,7 +4,7 @@ from typing import Optional
 
 from FFNN import FFNN
 from FifteenPuzzle import FifteenPuzzle
-from Helper import F_as_list, generate_task_prac, is_goal
+from Helper import F_as_list, generate_task_prac, get_gamma, is_goal
 from WUNN import WUNN
 
 import math
@@ -12,14 +12,21 @@ import torch
 
 
 def learn_heuristic_prac(**kwargs):
-    wunn = WUNN(mu_0=kwargs["mu_0"], sigma_0=math.sqrt(kwargs["sigma_0_squared"]))
+    update_beta = True
+    beta = kwargs["beta_0"]
+    gamma = get_gamma(beta_0=beta, beta_num_iter=0.00001, num_iter=kwargs["num_iter"])
+    wunn = WUNN(
+        mu_0=kwargs["mu_0"],
+        sigma_0=math.sqrt(kwargs["sigma_0_squared"]),
+        update_beta=update_beta,
+        beta=beta,
+        gamma=gamma,
+    )
     ffnn = FFNN()
 
     memory_buffer = Queue()
     y_q = float("-inf")
     alpha = kwargs["alpha_0"]
-    beta = kwargs["beta_0"]
-    update_beta = True
 
     for n in range(kwargs["num_iter"]):
         num_solved = 0

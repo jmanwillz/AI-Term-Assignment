@@ -7,7 +7,7 @@ class FFNN:
     def __init__(self):
         self.is_trained = False
         self.model = nn.Sequential(nn.Linear(16, 20), nn.ReLU(), nn.Linear(20, 2))
-        self.optimizer = optim.Adam(self.model.parameters(), lr=0.01)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=0.001)
 
     def negative_log_likelihood(self, outputs, targets):
         mean = outputs[:, 0]
