@@ -1,5 +1,6 @@
 from fifteen_puzzle_solvers.puzzle import Puzzle
 from queue import Queue
+from typing import Optional
 
 from FFNN import FFNN
 from FifteenPuzzle import FifteenPuzzle
@@ -23,7 +24,7 @@ def learn_heuristic_prac(**kwargs):
     for n in range(kwargs["num_iter"]):
         num_solved = 0
         for i in range(kwargs["num_tasks_per_iter"]):
-            T = generate_task_prac(
+            T: Optional[Puzzle] = generate_task_prac(
                 wunn=wunn,
                 max_steps=kwargs["max_steps"],
                 K=kwargs["K"],
@@ -89,38 +90,6 @@ def learn_heuristic_prac(**kwargs):
     return wunn, ffnn
 
 
-# def test_heuristic_with_wunn(**kwargs):
-#     puzzles: list[Puzzle] = []
-#     for i in range(100):
-#         puzzle: Puzzle = Puzzle(
-#             [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 0]]
-#         )
-#         puzzle.generate_random_position()
-
-#         optimal_solution = ida_star(
-#             puzzle=puzzle,
-#             t_max=0,
-#             uncert=False,
-#             check_time=False,
-#             ffnn=ffnn,
-#             alpha=kwargs["alpha"],
-#             epsilon=kwargs["epsilon"],
-#             y_q=kwargs["y_q"],
-#         )
-#         estimated_solution = ida_star(
-#             start_puzzle=puzzle,
-#             t_max=0,
-#             uncert=True,
-#             check_time=False,
-#             ffnn=ffnn,
-#             alpha=kwargs["alpha"],
-#             epsilon=kwargs["epsilon"],
-#             y_q=kwargs["y_q"],
-#         )
-
-#         print("Here")
-
-
 if __name__ == "__main__":
     wunn, ffnn = learn_heuristic_prac(
         alpha_0=0.99,
@@ -140,11 +109,3 @@ if __name__ == "__main__":
         t_max=60,
         train_iter=1000,
     )
-
-    # test_heuristic_with_wunn(
-    #     wunn=wunn,
-    #     ffnn=ffnn,
-    #     alpha=0.90,
-    #     y_q=float("-inf"),
-    #     epsilon=1,
-    # )
