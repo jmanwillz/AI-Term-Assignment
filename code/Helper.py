@@ -107,11 +107,11 @@ def generate_task_uncert(
                 predictions.append(wunn.test(x))
 
             variance = np.var(predictions)
-            states[s] = math.sqrt(variance)
+            states[s] = variance
             visited_states.add(s)
 
         s = random.choice(list(states.keys()))
-        variance = states[s] ** 2
+        variance = states[s]
 
         if variance >= epsilon:
             return s
@@ -127,17 +127,22 @@ def generate_task_cert(num_steps: int) -> Puzzle:
     )
     visited_states: Set = {start_state}
     state: Puzzle = start_state
+
     for _ in range(num_steps):
         prev_states = state.get_moves()
         prev_state = random.choice(prev_states)
         prev_states.remove(prev_state)
+
         while len(prev_states) > 0 and prev_state in visited_states:
             prev_state = random.choice(prev_states)
             prev_states.remove(prev_state)
         if len(prev_states) == 0 and prev_state in visited_states:
             break
+
         state = prev_state
         visited_states.add(state)
+
     if is_goal(state):
         raise Exception("The returned puzzle should not be the goal state.")
-    return state
+    else:
+        return state
