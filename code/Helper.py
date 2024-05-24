@@ -27,7 +27,6 @@ def F(s: Puzzle) -> torch.Tensor:
 
 
 def get_gamma(beta_0: float, beta_num_iter: float, num_iter: int):
-    # y^num_iter * beta_0 = beta_num_iter
     return math.log(beta_num_iter / beta_0) / math.log(num_iter)
 
 
