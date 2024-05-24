@@ -24,7 +24,7 @@ class FFNN:
             loss = self.negative_log_likelihood(outputs, y)
             loss.backward()
             self.optimizer.step()
-            if (epoch + 1) % 10 == 0:
+            if (epoch + 1) % 100 == 0:
                 print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
         self.is_trained = True
 

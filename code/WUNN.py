@@ -40,10 +40,8 @@ class WUNN:
 
             loss.backward()
             self.optimizer.step()
-            if (epoch + 1) % 10 == 0:
-                print(
-                    f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}, KL Loss: {kl_loss.item():.4f}"
-                )
+            if (epoch + 1) % 100 == 0:
+                print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
         self.is_trained = True
 
     def test(self, x_test):
