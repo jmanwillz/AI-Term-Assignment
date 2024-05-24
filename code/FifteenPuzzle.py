@@ -42,7 +42,7 @@ class FifteenPuzzle:
         else:
             sigma_t_squared = self.epsilon
 
-        h_val = h(alpha=self.alpha, mu=mean, sigma=math.sqrt(sigma_t_squared)).item()
+        h_val = h(alpha=self.alpha, mu=mean, sigma=math.sqrt(sigma_t_squared))
         return max(0, h_val)
 
     def ida_star(self) -> Optional[dict]:

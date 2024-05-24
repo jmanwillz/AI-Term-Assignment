@@ -10,8 +10,8 @@ import random
 import torch
 
 
-def h(alpha, mu, sigma):
-    return norm.ppf(alpha, loc=mu, scale=sigma)
+def h(alpha, mu, sigma) -> float:
+    return norm.ppf(alpha, loc=mu, scale=sigma).item()
 
 
 def is_goal(puzzle: Puzzle) -> bool:
@@ -26,11 +26,11 @@ def F(s: Puzzle) -> torch.Tensor:
     return torch.tensor(state).float().unsqueeze(0)
 
 
-def get_gamma(beta_0: float, beta_num_iter: float, num_iter: int):
+def get_gamma(beta_0: float, beta_num_iter: float, num_iter: int) -> float:
     return math.log(beta_num_iter / beta_0) / math.log(num_iter)
 
 
-def F_as_list(puzzle: Puzzle):
+def F_as_list(puzzle: Puzzle) -> list:
     return list(np.array(puzzle.position).flatten())
 
 
