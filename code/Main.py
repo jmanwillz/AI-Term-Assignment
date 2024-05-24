@@ -4,7 +4,13 @@ from typing import Optional
 
 from FFNN import FFNN
 from FifteenPuzzle import FifteenPuzzle
-from Helper import F_as_list, generate_task_prac, get_gamma, is_goal
+from Helper import (
+    F_as_list,
+    generate_task_prac,
+    get_gamma,
+    get_x_and_y_for_training,
+    is_goal,
+)
 from WUNN import WUNN
 
 import math
@@ -76,12 +82,7 @@ def learn_heuristic_prac(**kwargs):
         else:
             update_beta = True
 
-        train_set = list(memory_buffer.queue)
-        x = []
-        y = []
-        for entry in train_set:
-            x.append(F_as_list(entry[0]))
-            y.append(entry[1])
+        x, y = get_x_and_y_for_training(list(memory_buffer.queue))
 
         ffnn.train(
             torch.tensor(x).float(), torch.tensor(y).float(), kwargs["train_iter"]

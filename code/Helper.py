@@ -34,6 +34,15 @@ def F_as_list(puzzle: Puzzle) -> list:
     return list(np.array(puzzle.position).flatten())
 
 
+def get_x_and_y_for_training(training_set: list):
+    x = []
+    y = []
+    for entry in training_set:
+        x.append(F_as_list(entry[0]))
+        y.append(entry[1])
+    return x, y
+
+
 def manhattan_distance(puzzle: Puzzle) -> int:
     goal_positions = {
         1: (0, 0),
