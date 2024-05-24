@@ -69,7 +69,40 @@ class PuzzleState:
 
             s_prime = s
 
-    def heuristic(self, puzzle: Puzzle):
+    def manhattan_distance(self, puzzle: Puzzle):
+        goal_positions = {
+            1: (0, 0),
+            2: (0, 1),
+            3: (0, 2),
+            4: (0, 3),
+            5: (1, 0),
+            6: (1, 1),
+            7: (1, 2),
+            8: (1, 3),
+            9: (2, 0),
+            10: (2, 1),
+            11: (2, 2),
+            12: (2, 3),
+            13: (3, 0),
+            14: (3, 1),
+            15: (3, 2),
+            0: (3, 3),
+        }
+
+        total_distance = 0
+
+        for i in range(4):
+            for j in range(4):
+                tile = puzzle.position[i][j]
+                if tile != 0:
+                    goal_i, goal_j = goal_positions[tile]
+                    total_distance += abs(i - goal_i) + abs(j - goal_j)
+
+        return total_distance
+
+    def heuristic(self, puzzle: Puzzle, uncert: bool = True):
+        if not uncert:
+            return self.manhattan_distance(puzzle)
         # TODO: Add logic here
         if self.ffnn is None or self.alpha is None or self.y_q is None:
             raise Exception()
@@ -85,14 +118,20 @@ class PuzzleState:
         h_val = self.h(self.alpha, mean, sigma_t_squared).item()
         return max(0, h_val)
 
-    def IDA_star(self, start_puzzle: Puzzle, t_max: int):
+    def IDA_star(
+        self,
+        start_puzzle: Puzzle,
+        t_max: int,
+        uncert: bool = True,
+        check_time: bool = True,
+    ):
         start_time = time.time()
-        bound = self.heuristic(start_puzzle)
+        bound = self.heuristic(start_puzzle, uncert)
         while True:
-            result = self.search(start_puzzle, 0, bound, [start_puzzle])
+            result = self.search(start_puzzle, 0, bound, [start_puzzle], uncert)
 
             elapsed_time = time.time() - start_time
-            if elapsed_time > t_max:
+            if elapsed_time > t_max and check_time:
                 return None
 
             if len(result["solution"]) > 0:
@@ -101,11 +140,11 @@ class PuzzleState:
                 return None
             bound = result["cost"]
 
-    def search(self, puzzle: Puzzle, g, bound, path):
+    def search(self, puzzle: Puzzle, g, bound, path, uncert: bool = True):
         if self.is_goal(puzzle):
             return {"cost": g, "solution": path}
 
-        f = g + self.heuristic(puzzle)
+        f = g + self.heuristic(puzzle, uncert)
         if f > bound:
             return {"cost": f, "solution": []}
 

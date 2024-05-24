@@ -1,30 +1,17 @@
+from fifteen_puzzle_solvers.puzzle import Puzzle
 from queue import Queue
 
 from FFNN import FFNN
-from PuzzleState import PuzzleState
+from FifteenPuzzle import FifteenPuzzle
+from Helper import F_as_list, generate_task_prac, is_goal
 from WUNN import WUNN
 
 import math
 import torch
 
 
-def generate_task_prac(**kwargs) -> PuzzleState:
-    puzzle = PuzzleState()
-    if kwargs["wunn"].is_trained:
-        puzzle.generate_puzzle_uncert(
-            wunn=kwargs["wunn"],
-            max_steps=kwargs["max_steps"],
-            epsilon=kwargs["epsilon"],
-            K=kwargs["K"],
-        )
-        return puzzle
-    else:
-        puzzle.generate_puzzle(num_steps=1)
-        return puzzle
-
-
 def learn_heuristic_prac(**kwargs):
-    wunn = WUNN(mu_0=0, sigma_0=math.sqrt(10))
+    wunn = WUNN(mu_0=kwargs["mu_0"], sigma_0=math.sqrt(kwargs["sigma_0_squared"]))
     ffnn = FFNN()
 
     memory_buffer = Queue()
@@ -36,33 +23,43 @@ def learn_heuristic_prac(**kwargs):
     for n in range(kwargs["num_iter"]):
         num_solved = 0
         for i in range(kwargs["num_tasks_per_iter"]):
-            puzzle_state = generate_task_prac(
+            T = generate_task_prac(
                 wunn=wunn,
-                epsilon=kwargs["epsilon"],
                 max_steps=kwargs["max_steps"],
                 K=kwargs["K"],
+                epsilon=kwargs["epsilon"],
             )
 
-            if puzzle_state.is_goal():
+            if T is None or is_goal(T):
                 continue
 
-            puzzle_state.set_params(
-                alpha=alpha, ffnn=ffnn, y_q=y_q, epsilon=kwargs["epsilon"]
+            puzzle: FifteenPuzzle = FifteenPuzzle(
+                alpha=alpha,
+                check_time=True,
+                epsilon=kwargs["epsilon"],
+                ffnn=ffnn,
+                puzzle=T,
+                t_max=kwargs["t_max"],
+                uncertain=True,
+                y_q=y_q,
             )
 
-            plan = puzzle_state.IDA_star(puzzle_state.state, t_max=kwargs["t_max"])
+            plan = puzzle.ida_star()
 
-            if plan is not None:
-                num_solved += 1
-                for s_j in plan["solution"]:
-                    if not puzzle_state.is_goal(s_j):
-                        x_j = s_j
-                        y_j = plan["cost"]
+            if plan is None:
+                continue
 
-                        if memory_buffer.qsize() > kwargs["max_memory_buffer_records"]:
-                            memory_buffer.get()
+            num_solved += 1
+            cost = plan["cost"]
+            for s_j in plan["solution"]:
+                if not is_goal(s_j):
+                    x_j = s_j
+                    y_j = cost
+                    cost -= 1
 
-                        memory_buffer.put((x_j, y_j))
+                    if memory_buffer.qsize() > kwargs["max_memory_buffer_records"]:
+                        memory_buffer.get()
+                    memory_buffer.put((x_j, y_j))
 
         if num_solved < kwargs["num_tasks_per_iter_thresh"]:
             alpha = max(0.5, alpha - kwargs["delta"])
@@ -74,7 +71,7 @@ def learn_heuristic_prac(**kwargs):
         x = []
         y = []
         for entry in train_set:
-            x.append(puzzle_state.F_not_as_tensor(entry[0]))
+            x.append(F_as_list(entry[0]))
             y.append(entry[1])
 
         ffnn.train(
@@ -89,9 +86,43 @@ def learn_heuristic_prac(**kwargs):
         print(f"Memory buffer size: {memory_buffer.qsize()}")
         print()
 
+    return wunn, ffnn
+
+
+# def test_heuristic_with_wunn(**kwargs):
+#     puzzles: list[Puzzle] = []
+#     for i in range(100):
+#         puzzle: Puzzle = Puzzle(
+#             [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 0]]
+#         )
+#         puzzle.generate_random_position()
+
+#         optimal_solution = ida_star(
+#             puzzle=puzzle,
+#             t_max=0,
+#             uncert=False,
+#             check_time=False,
+#             ffnn=ffnn,
+#             alpha=kwargs["alpha"],
+#             epsilon=kwargs["epsilon"],
+#             y_q=kwargs["y_q"],
+#         )
+#         estimated_solution = ida_star(
+#             start_puzzle=puzzle,
+#             t_max=0,
+#             uncert=True,
+#             check_time=False,
+#             ffnn=ffnn,
+#             alpha=kwargs["alpha"],
+#             epsilon=kwargs["epsilon"],
+#             y_q=kwargs["y_q"],
+#         )
+
+#         print("Here")
+
 
 if __name__ == "__main__":
-    learn_heuristic_prac(
+    wunn, ffnn = learn_heuristic_prac(
         alpha_0=0.99,
         beta_0=0.05,
         delta=0.05,
@@ -100,10 +131,20 @@ if __name__ == "__main__":
         max_memory_buffer_records=25000,
         max_steps=1000,
         max_train_iter=5000,
+        mu_0=0,
         num_iter=50,
         num_tasks_per_iter=10,
         num_tasks_per_iter_thresh=6,
         q=0.95,
+        sigma_0_squared=10,
         t_max=60,
         train_iter=1000,
     )
+
+    # test_heuristic_with_wunn(
+    #     wunn=wunn,
+    #     ffnn=ffnn,
+    #     alpha=0.90,
+    #     y_q=float("-inf"),
+    #     epsilon=1,
+    # )
