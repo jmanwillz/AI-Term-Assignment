@@ -1,3 +1,4 @@
+from datetime import datetime
 from fifteen_puzzle_solvers.algorithms import AStar
 from fifteen_puzzle_solvers.puzzle import Puzzle
 from fifteen_puzzle_solvers.solver import PuzzleSolver
@@ -6,6 +7,7 @@ from typing import Optional, Set
 
 from WUNN import WUNN
 
+import json
 import math
 import numpy as np
 import random
@@ -46,31 +48,65 @@ def get_x_and_y_for_training(training_set: list):
 
 
 def get_optimal_plans(puzzles: list[Puzzle]):
+    file_name = f"optimal_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.json"
     print("Solving optimal plans...")
     print()
 
-    plans = []
+    plans = dict()
     for index, puzzle in enumerate(puzzles):
         print(f"Solving puzzle {index + 1}/{len(puzzles)}")
+
         puzzle_solver = PuzzleSolver(AStar(puzzle))
         puzzle_solver.run()
+
+        solution = []
+        for step in puzzle_solver._strategy.solution:
+            solution.append(step.position)
+
         plan = {
-            "solution": puzzle_solver._strategy.solution,
+            "solution": solution,
             "cost": len(puzzle_solver._strategy.solution),
             "num_expanded_nodes": puzzle_solver._strategy.num_expanded_nodes,
         }
-        plans.append(plan)
-    print()
+
+        plans[str(F_as_list(puzzle))] = plan
+
+        print("Saving plan...")
+        with open(file_name, "w") as outfile:
+            json.dump(plans, outfile)
+        print()
+
     return plans
+
+
+def save_puzzles_to_file(puzzles: list[Puzzle]):
+    results = {"puzzles": []}
+    for puzzle in puzzles:
+        results["puzzles"].append(puzzle.position)
+    json_object = json.dumps(results, indent=4)
+    file_name = f"puzzles_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.json"
+    with open(file_name, "w") as outfile:
+        outfile.write(json_object)
+
+
+def read_puzzles_from_file(file_path: str) -> list[Puzzle]:
+    with open(file_path, "r") as openfile:
+        json_object = json.load(openfile)
+    result: list[Puzzle] = []
+    for puzzle in json_object["puzzles"]:
+        result.append(Puzzle(puzzle))
+    return result
 
 
 def generate_puzzles(num_puzzles: int) -> list[Puzzle]:
     puzzles = []
-    for _ in range(num_puzzles):
+    while len(puzzles) < num_puzzles:
         puzzle: Puzzle = Puzzle(
             [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 0]]
         )
         puzzle.generate_random_position()
+        if puzzle in puzzles or not puzzle.is_solvable():
+            continue
         puzzles.append(puzzle)
     return puzzles
 

@@ -134,6 +134,3 @@ if __name__ == "__main__":
         t_max=60,
         train_iter=1000,
     )
-
-    puzzles = generate_puzzles(100)
-    optimal_plans = get_optimal_plans(puzzles)
