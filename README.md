@@ -49,3 +49,18 @@ on reproducibility of the paper. Generally, a report should include any informat
 or practitioners would find useful for reproducing or building upon the chosen paper.
 The results of any experiments should be included; a “negative result” which doesn’t support
 the main claims of the original paper is still valuable.
+
+## Installation
+
+In order to create a conda environment that mirrors the development environment run the following command:
+
+```bash
+conda create --name 1352200 --file requirements.txt
+```
+
+In order to run the code, run the following commands:
+
+```bash
+cd code;
+python Main.py
+```
